@@ -116,7 +116,7 @@ const LawyerDashboard: React.FC = () => {
         </div>
 
       </div>
-      {isSubscribed &&
+      {!isSubscribed &&
       <SubscriptionModal isOpen={open} onClose={() => setOpen(!open)} />
        }
 
