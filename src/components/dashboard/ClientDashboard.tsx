@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
-import { Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { Button } from '../common/Button';
+import React from 'react';
+// import { Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
+// import { Button } from '../common/Button';
 // import { NewCaseModal } from '../case/NewCaseModal';
-import { useCaseStore } from '@/store/useCaseStore';
-import type { Case, CaseType } from '@/types';
+// import { useCaseStore } from '@/store/useCaseStore';
+// import type { Case, CaseType } from '@/types';
 
 export const ClientDashboard: React.FC = () => {
-  const { cases } = useCaseStore();
-  const [newCaseModal, setNewCaseModal] = useState<{ isOpen: boolean; type: CaseType | null }>({
-    isOpen: false,
-    type: null
-  });
+  // const { cases } = useCaseStore();
+  // const [newCaseModal, setNewCaseModal] = useState<{ isOpen: boolean; type: CaseType | null }>({
+  //   isOpen: false,
+  //   type: null
+  // });
 
-  const handleNewCase = (type: CaseType) => {
-    setNewCaseModal({ isOpen: true, type });
-  };
+  // const handleNewCase = (type: CaseType) => {
+  //   setNewCaseModal({ isOpen: true, type });
+  // };
 
   return (
     <div className="p-6">

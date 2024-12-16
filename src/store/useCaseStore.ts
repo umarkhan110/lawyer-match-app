@@ -71,6 +71,7 @@ export const useCaseStore = create<CaseState>((set) => ({
     }
   },
   submitQuote: async (caseId, quote) => {
+    console.log(quote)
     set({ isLoading: true, error: null });
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));

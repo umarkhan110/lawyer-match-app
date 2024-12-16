@@ -4,28 +4,28 @@ import { useLawyerStore } from '@/store/useLawyerStore';
 // import Map from 'mapbox-gl';
 
 export const LawyerDashboard: React.FC = () => {
-  const { lawyer, updateStartingPrice, updateAdditionalServices, addOfficeLocation } = useLawyerStore();
+  const { lawyer } = useLawyerStore();
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+console.log(showPriceModal, showServicesModal, showLocationModal)
+  // const handlePriceUpdate = (price: number) => {
+  //   updateStartingPrice(price);
+  //   setShowPriceModal(false);
+  // };
 
-  const handlePriceUpdate = (price: number) => {
-    updateStartingPrice(price);
-    setShowPriceModal(false);
-  };
+  // const handleServicesUpdate = (services: string[]) => {
+  //   updateAdditionalServices(services);
+  //   setShowServicesModal(false);
+  // };
 
-  const handleServicesUpdate = (services: string[]) => {
-    updateAdditionalServices(services);
-    setShowServicesModal(false);
-  };
-
-  const handleLocationAdd = (location: { address: string; latitude: number; longitude: number }) => {
-    addOfficeLocation({
-      id: Date.now().toString(),
-      ...location
-    });
-    setShowLocationModal(false);
-  };
+  // const handleLocationAdd = (location: { address: string; latitude: number; longitude: number }) => {
+  //   addOfficeLocation({
+  //     id: Date.now().toString(),
+  //     ...location
+  //   });
+  //   setShowLocationModal(false);
+  // };
 
   return (
     <div className="p-6">

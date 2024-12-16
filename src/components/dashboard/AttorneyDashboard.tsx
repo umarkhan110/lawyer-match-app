@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Bell, Users, DollarSign, Briefcase } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useCaseStore } from '@/store/useCaseStore';
-import type { Case } from '@/types';
+// import type { Case } from '@/types';
 
 export const AttorneyDashboard: React.FC = () => {
   const { cases, submitQuote, isLoading } = useCaseStore();

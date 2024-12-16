@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Lawyer } from '@/types';
-import { auth, db } from "@/firebase/config";
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { db } from "@/firebase/config";
 import { doc, getDoc } from 'firebase/firestore';
 import { setCookie } from 'cookies-next';
 interface AuthState {
@@ -50,10 +49,12 @@ export const useAuthStore = create<AuthState>()(
           set({ user, isAuthenticated: true, isLoading: false });
           setCookie('auth-storage', JSON.stringify({ isAuthenticated: true, role: role }));
         } catch (error) {
+          console.log(error)
           set({ error: 'Invalid credentials', isLoading: false });
         }
       },
       signup: async (userData) => {
+        console.log(userData)
         set({ isLoading: true, error: null });
         try {
           // Simulate API call
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
           // };
           // set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
+          console.log(error)
           set({ error: 'Registration failed', isLoading: false });
         }
       },
