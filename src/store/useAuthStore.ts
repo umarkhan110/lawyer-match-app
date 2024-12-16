@@ -30,8 +30,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user: Partial<Lawyer> = {
             id: res.user.uid,
-            email: res.email,
-            fullName: res.displayName,
+            email: res.user.email,
+            fullName: res.user.displayName,
             // preferredLanguage: 'en',
           };
           const role = isAttorney ? "lawyer" : "client"

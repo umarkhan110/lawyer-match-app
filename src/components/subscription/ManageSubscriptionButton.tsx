@@ -32,7 +32,7 @@ const ManageUserSubscriptionButton: React.FC<ManageUserSubscriptionButtonProps> 
         const res = await checkout(data);
 
         if (res.success) {
-          onClose()
+          window.location.href = res.res.url ?? "/lawyer";
         }
       } catch (err: any) {
         console.error(err.message);

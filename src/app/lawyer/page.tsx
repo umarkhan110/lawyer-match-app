@@ -30,7 +30,7 @@ const LawyerDashboard: React.FC = () => {
     });
     setShowLocationModal(false);
   };
-
+console.log(isSubscribed)
   return (
     <>
       <div className="p-6">
