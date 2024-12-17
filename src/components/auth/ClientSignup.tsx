@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { auth, db } from "@/firebase/config";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import MapboxAddressSearch from "../lawyer/MapboxAddressSearch";
 
 interface FamilyMember {
   fullName: string;
@@ -40,6 +41,7 @@ interface StepProps {
   setFamilyMembers?: React.Dispatch<React.SetStateAction<FamilyMember[]>>;
   onClose?: () => void;
   setType?: (data: any) => void;
+  setLocationInput?: (data: any) => void;
 }
 
 interface ClientSignUpProps {
@@ -66,6 +68,12 @@ export const ClientSignUp: React.FC<ClientSignUpProps> = ({ onClose, setType }) 
     additionalDocs: null,
     asylumType: "",
   });
+
+    const [locationInput, setLocationInput] = useState<{
+      address: string;
+      latitude: number;
+      longitude: number;
+    } | null>(null);
 
   const handleNext = () => setStep((prev) => prev + 1);
   const handleBack = () => setStep((prev) => prev - 1);
@@ -99,6 +107,7 @@ export const ClientSignUp: React.FC<ClientSignUpProps> = ({ onClose, setType }) 
           handleBack={handleBack}
           familyMembers={familyMembers}
           setFamilyMembers={setFamilyMembers}
+          setLocationInput={setLocationInput}
         />
       )}
       {step === 3 && (
@@ -202,6 +211,7 @@ const Step2: React.FC<StepProps> = ({
   handleBack,
   familyMembers,
   setFamilyMembers,
+  setLocationInput
 }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [familyMemberErrors, setFamilyMemberErrors] = useState<string[]>([]);
@@ -290,6 +300,8 @@ const Step2: React.FC<StepProps> = ({
           </div>
         )
       )}
+          {/* <MapboxAddressSearch setLocationInput={setLocationInput}/> */}
+
       <div>
         <h3 className="text-lg font-semibold">Family Members</h3>
         {familyMembers.map((member, index) => (

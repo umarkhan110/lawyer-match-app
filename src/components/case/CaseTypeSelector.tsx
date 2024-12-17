@@ -3,7 +3,7 @@ import { Scale, Car, Users, Home } from 'lucide-react';
 import type { CaseType } from '@/types';
 
 interface CaseTypeSelectorProps {
-  onSelect: (caseType: CaseType['type']) => void;
+  onSelect: (caseType: any) => void;
 }
 
 export const CaseTypeSelector: React.FC<CaseTypeSelectorProps> = ({ onSelect }) => {
