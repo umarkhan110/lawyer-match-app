@@ -8,7 +8,11 @@ interface ClientMapProps {
   nearbyLawyers: Lawyer[];
   onLawyerSelect: (lawyer: Lawyer) => void;
 }
+const mapboxApiKey = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+if (!mapboxApiKey) {
+  throw new Error('Mapbox API key is missing. Please check your .env.local file.');
+}
 export const ClientMap: React.FC<ClientMapProps> = ({
   client,
   nearbyLawyers,
@@ -21,8 +25,7 @@ export const ClientMap: React.FC<ClientMapProps> = ({
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = process.env.MAPBOX_TOKEN || "pk.eyJ1Ijoia2VubmV0aG1lamlhIiwiYSI6ImNseGV6b3c0djAyOGYyc3B3a3Bzd2xtNXEifQ.iNXcgdwigbqLTpSYbMJUOg";
-
+    mapboxgl.accessToken = mapboxApiKey
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',

@@ -1,6 +1,9 @@
-import {create} from 'zustand';
+import { create } from 'zustand';
 import { Client, Lawyer } from '../types';
 import { sendClientNotification } from '../services/notifications';
+import { persist } from 'zustand/middleware';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from "@/firebase/config";
 
 // Mock data for testing
 const mockClient: Client = {
@@ -71,57 +74,88 @@ interface ClientStore {
   updateLocation: (latitude: number, longitude: number) => void;
   matchWithLawyer: (lawyerId: string) => Promise<void>;
   removeMatch: (lawyerId: string) => void;
+  updateFirestoreField: (field: keyof Client, value: any, userId: string) => Promise<void>;
 }
 
-export const useClientStore = create<ClientStore>((set, get) => ({
-  client: mockClient, // Initialize with mock client
-  nearbyLawyers: mockNearbyLawyers, // Initialize with mock lawyers
-  matches: {},
-  isLoading: false,
-  error: null,
+export const useClientStore = create<ClientStore>()(
+  persist((set, get) => ({
+    client: null,
+    nearbyLawyers: [],
+    matches: {},
+    isLoading: false,
+    error: null,
 
-  updateBudget: (budget) => {
-    set((state) => ({
-      client: state.client ? { ...state.client, budget } : null
-    }));
-  },
+    updateBudget: (budget) => {
+      set((state) => {
+        console.log(budget)
+        return{
+        client: state.client ? { ...state.client, budget } : null
+      }});
+    },
 
-  updateDownPayment: (downPayment) => {
-    set((state) => ({
-      client: state.client ? { ...state.client, downPayment } : null
-    }));
-  },
+    updateDownPayment: (downPayment) => {
+      set((state) => {
+        return{
+        client: state.client ? { ...state.client, downPayment } : null
+      }});
+    },
 
-  updateLocation: (latitude, longitude) => {
-    set((state) => ({
-      client: state.client
-        ? { ...state.client, location: { latitude, longitude } }
-        : null
-    }));
-  },
-
-  matchWithLawyer: async (lawyerId) => {
-    const lawyer = get().nearbyLawyers.find((l) => l.id === lawyerId);
-    if (!lawyer || !get().client) return;
-
-    set({ isLoading: true });
-    try {
-      await sendClientNotification(get().client!, lawyer);
+    updateLocation: (latitude, longitude) => {
       set((state) => ({
-        matches: { ...state.matches, [lawyerId]: lawyer }
+        client: state.client
+          ? { ...state.client, location: { latitude, longitude } }
+          : null
       }));
-    } catch (error) {
-      console.log(error)
-      set({ error: 'Failed to match with lawyer' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+    },
 
-  removeMatch: (lawyerId) => {
-    set((state) => {
-      const { [lawyerId]: removed, ...remainingMatches } = state.matches;
-      return { matches: remainingMatches };
-    });
+    matchWithLawyer: async (lawyerId) => {
+      const lawyer = get().nearbyLawyers.find((l) => l.id === lawyerId);
+      if (!lawyer || !get().client) return;
+
+      set({ isLoading: true });
+      try {
+        await sendClientNotification(get().client!, lawyer);
+        set((state) => ({
+          matches: { ...state.matches, [lawyerId]: lawyer }
+        }));
+      } catch (error) {
+        console.log(error)
+        set({ error: 'Failed to match with lawyer' });
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
+    removeMatch: (lawyerId) => {
+      set((state) => {
+        const { [lawyerId]: removed, ...remainingMatches } = state.matches;
+        return { matches: remainingMatches };
+      });
+    },
+
+    updateFirestoreField: async (field, value, userId) => {
+      set({ isLoading: true });
+      try {
+        const userDocRef = doc(db, "users", userId);
+        await setDoc(userDocRef, { [field]: value }, { merge: true });
+        // set((state) => {
+        //   return {
+        //   client: { ...state.client, [field]: value },
+        //   error: null,
+        // }});
+      } catch (error) {
+        console.error(`Failed to update Firestore field "${field}":`, error);
+        set({ error: `Failed to update ${field}` });
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+  }),
+  {
+    name: "client-store",
+    partialize: (state) => ({
+      client: state.client,
+    }),
   }
-}));
+  )
+  );

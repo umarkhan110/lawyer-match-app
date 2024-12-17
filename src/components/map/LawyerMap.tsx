@@ -7,7 +7,11 @@ interface LawyerMapProps {
   locations: OfficeLocation[];
   onLocationSelect?: (location: OfficeLocation) => void;
 }
+const mapboxApiKey = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+if (!mapboxApiKey) {
+  throw new Error('Mapbox API key is missing.');
+}
 export const LawyerMap: React.FC<LawyerMapProps> = ({ locations, onLocationSelect }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -15,16 +19,15 @@ export const LawyerMap: React.FC<LawyerMapProps> = ({ locations, onLocationSelec
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = process.env.MAPBOX_TOKEN || '';
+    mapboxgl.accessToken = mapboxApiKey;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [-74.5, 40],
+      center: [locations[0]?.longitude, locations[0]?.latitude],
       zoom: 9
     });
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl());
 
     return () => {
@@ -34,8 +37,6 @@ export const LawyerMap: React.FC<LawyerMapProps> = ({ locations, onLocationSelec
 
   useEffect(() => {
     if (!map.current) return;
-
-    // Add markers for each location
     locations.forEach(location => {
       const marker = new mapboxgl.Marker()
         .setLngLat([location.longitude, location.latitude])

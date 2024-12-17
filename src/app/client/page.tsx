@@ -4,12 +4,14 @@ import { ClientMap } from '@/components/client/ClientMap';
 import { BudgetSlider } from '@/components/client/BudgetSlider';
 import { useClientStore } from '@/store/useClientStore';
 import { Lawyer } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const ClientDashboard: React.FC = () => {
-  const { client, nearbyLawyers, matchWithLawyer, updateBudget, updateDownPayment } = useClientStore();
+  const { user } = useAuthStore();
+  const { client, nearbyLawyers, matchWithLawyer, updateBudget, updateDownPayment, updateFirestoreField } = useClientStore();
   const [selectedLawyer, setSelectedLawyer] = useState<Lawyer | null>(null);
-  const [budget, setBudget] = useState(50000); // Default budget
-  const [downPayment, setDownPayment] = useState(5000); // Default down payment
+  const [budget, setBudget] = useState(client?.budget || 0);
+  const [downPayment, setDownPayment] = useState(client?.downPayment || 0);
 
   const handleLawyerSelect = async (lawyer: Lawyer) => {
     setSelectedLawyer(lawyer);
@@ -17,14 +19,18 @@ const ClientDashboard: React.FC = () => {
       await matchWithLawyer(lawyer.id);
     }
   };
-
-  // Update store when budget or down payment changes
   useEffect(() => {
-    updateBudget(budget);
+    if(user?.id){
+      // updateBudget(budget);
+      updateFirestoreField("budget", budget, user.id);
+    }
   }, [budget]);
 
   useEffect(() => {
-    updateDownPayment(downPayment);
+    if(user?.id){
+      updateDownPayment(downPayment);
+      updateFirestoreField("downPayment", downPayment, user.id);
+    }
   }, [downPayment]);
 
   return (
@@ -43,7 +49,7 @@ const ClientDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4">
             <h2 className="text-lg font-semibold mb-4">Available Lawyers Near You</h2>
-            {client && (
+            {client && client.location && (
               <ClientMap
                 client={client}
                 nearbyLawyers={nearbyLawyers.filter(

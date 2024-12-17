@@ -1,65 +1,85 @@
-"use client"
-import React, { useState } from 'react';
-import { MapPin, Calendar, DollarSign, Globe } from 'lucide-react';
-import { useLawyerStore } from '@/store/useLawyerStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
-import { ClientMap } from '@/components/client/ClientMap';
-import { useClientStore } from '@/store/useClientStore';
-import { Lawyer } from '@/types';
+"use client";
+import React, { useState } from "react";
+import { MapPin, Calendar, DollarSign, Globe } from "lucide-react";
+import { useLawyerStore } from "@/store/useLawyerStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
+import { Lawyer, OfficeLocation } from "@/types";
+import MapboxAddressSearch from "@/components/lawyer/MapboxAddressSearch";
+import { LawyerMap } from "@/components/map/LawyerMap";
 
 const LawyerDashboard: React.FC = () => {
-  const { isSubscribed } = useAuthStore();
+  const { isSubscribed, user } = useAuthStore();
   const [open, setOpen] = useState<boolean>(isSubscribed);
-  const { lawyer, updateStartingPrice, updateAdditionalServices, addOfficeLocation } = useLawyerStore();
-  const { client, nearbyLawyers } = useClientStore();
+  const { lawyer, updateFirestoreField, updateField } = useLawyerStore();
 
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  
-  // States to handle user inputs
-  const [priceInput, setPriceInput] = useState<number | string>(lawyer?.startingPrice || 0);
-  const [servicesInput, setServicesInput] = useState<string[]>(lawyer?.languages || []);
-  const [locationInput, setLocationInput] = useState<{ address: string; latitude: number; longitude: number } | null>(null);
-
-  const handlePriceUpdate = () => {
-    updateStartingPrice(Number(priceInput));
-    setShowPriceModal(false);
+  const [priceInput, setPriceInput] = useState<number | string>(
+    lawyer?.startingPrice || 0
+  );
+  const [servicesInput, setServicesInput] = useState<string[]>(
+    lawyer?.languages || []
+  );
+  const [locationInput, setLocationInput] = useState<{
+    address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const handlePriceUpdate = async () => {
+    if (user?.id) {
+      await updateFirestoreField("startingPrice", Number(priceInput), user.id);
+      await updateField("startingPrice", Number(priceInput))
+      setShowPriceModal(false);
+    }
   };
 
-  const handleServicesUpdate = () => {
-    updateAdditionalServices(servicesInput);
-    setShowServicesModal(false);
+  const handleServicesUpdate = async () => {
+    if (user?.id) {
+      await updateFirestoreField("languages", servicesInput, user.id);
+      await updateField("languages", servicesInput)
+      setShowServicesModal(false);
+    }
   };
 
-  const handleLocationAdd = () => {
-    if (locationInput) {
-      addOfficeLocation({
+  const handleLocationAdd = async () => {
+    if (locationInput && user?.id) {
+      const newLocation = {
         id: Date.now().toString(),
-        ...locationInput
-      });
+        ...locationInput,
+      };
+      const updatedLocations = [
+        ...(lawyer?.officeLocations || []),
+        newLocation,
+      ];
+      await updateFirestoreField("officeLocations", updatedLocations, user.id);
+      await updateField("officeLocations", updatedLocations)
       setShowLocationModal(false);
     }
   };
 
-  const Modal: React.FC<{ children:any, onClose: () => void }> = ({ children, onClose }) => (
+  const Modal: React.FC<{ children: any; onClose: () => void }> = ({
+    children,
+    onClose,
+  }) => (
     <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         {children}
-        <button onClick={onClose} className="mt-4 p-2 bg-red-500 text-white rounded">
+        <button
+          onClick={onClose}
+          className="mt-4 p-2 bg-red-500 text-white rounded"
+        >
           Close
         </button>
       </div>
     </div>
   );
 
-    const handleLawyerSelect = async (lawyer: Lawyer) => {
-      // setSelectedLawyer(lawyer);
-      // if (lawyer.id) {
-      //   await matchWithLawyer(lawyer.id);
-      // }
-    };
+  const onLocationSelect = async (location: OfficeLocation) => {
+
+  };
+
   return (
     <>
       <div className="p-6">
@@ -75,7 +95,7 @@ const LawyerDashboard: React.FC = () => {
           <DashboardCard
             icon={<Globe className="h-6 w-6" />}
             title="Languages"
-            value={lawyer?.languages?.join(', ') || 'Not set'}
+            value={lawyer?.languages?.join(", ") || "Not set"}
             onClick={() => setShowServicesModal(true)}
           />
           <DashboardCard
@@ -88,7 +108,9 @@ const LawyerDashboard: React.FC = () => {
             icon={<Calendar className="h-6 w-6" />}
             title="Available Slots"
             value="View Calendar"
-            onClick={() => {/* Handle calendar view */ }}
+            onClick={() => {
+              /* Handle calendar view */
+            }}
           />
         </div>
 
@@ -96,29 +118,27 @@ const LawyerDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Office Locations</h2>
             <div className="h-[400px] rounded-lg overflow-hidden">
-              {/* Mapbox implementation would go here */}
-                {client && (
-                            <ClientMap
-                              client={client}
-                              nearbyLawyers={nearbyLawyers.filter(
-                                (lawyer: any) => lawyer.startingPrice <= 100000
-                              )}
-                              onLawyerSelect={handleLawyerSelect}
-                            />
-                          )}
+              {lawyer && lawyer.officeLocations && (
+                <LawyerMap
+                locations={lawyer?.officeLocations}
+                onLocationSelect={onLocationSelect}
+                />
+              )}
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Recent Client Requests</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Recent Client Requests
+            </h2>
             {/* Client requests list would go here */}
           </div>
         </div>
-
       </div>
-      {!isSubscribed &&
-      <SubscriptionModal isOpen={open} onClose={() => setOpen(!open)} />
-       }
+
+      {isSubscribed && (
+        <SubscriptionModal isOpen={open} onClose={() => setOpen(!open)} />
+      )}
 
       {/* Price Modal */}
       {showPriceModal && (
@@ -146,8 +166,10 @@ const LawyerDashboard: React.FC = () => {
           <h2 className="text-xl font-semibold">Update Languages</h2>
           <input
             type="text"
-            value={servicesInput.join(', ')}
-            onChange={(e) => setServicesInput(e.target.value.split(', '))}
+            value={servicesInput.join(", ")}
+            onChange={(e) =>
+              setServicesInput(e.target.value.split(", ").map((s) => s.trim()))
+            }
             className="mt-2 p-2 border rounded"
             placeholder="Enter languages"
           />
@@ -164,13 +186,7 @@ const LawyerDashboard: React.FC = () => {
       {showLocationModal && (
         <Modal onClose={() => setShowLocationModal(false)}>
           <h2 className="text-xl font-semibold">Add Office Location</h2>
-          <input
-            type="text"
-            value={locationInput?.address || ''}
-            onChange={(e) => setLocationInput(prev => ({ ...prev!, address: e.target.value }))}
-            className="mt-2 p-2 border rounded"
-            placeholder="Enter address"
-          />
+          <MapboxAddressSearch setLocationInput={setLocationInput}/>
           <button
             onClick={handleLocationAdd}
             className="mt-4 p-2 bg-blue-500 text-white rounded"
@@ -192,15 +208,18 @@ interface DashboardCardProps {
   onClick: () => void;
 }
 
-const DashboardCard: React.FC<DashboardCardProps> = ({ icon, title, value, onClick }) => (
+const DashboardCard: React.FC<DashboardCardProps> = ({
+  icon,
+  title,
+  value,
+  onClick,
+}) => (
   <div
     className="bg-white p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
     onClick={onClick}
   >
     <div className="flex items-center mb-2">
-      <div className="p-2 bg-blue-100 rounded-lg mr-3">
-        {icon}
-      </div>
+      <div className="p-2 bg-blue-100 rounded-lg mr-3">{icon}</div>
       <h3 className="text-lg font-semibold">{title}</h3>
     </div>
     <p className="text-2xl font-bold text-gray-900">{value}</p>
