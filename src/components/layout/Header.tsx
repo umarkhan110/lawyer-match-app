@@ -45,7 +45,9 @@ export const Header: React.FC<HeaderProps> = ({ onAuthClick, onNavClick, onAttor
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">Welcome, {user?.fullName}</span>
+                <span className="text-gray-700">Welcome, 
+                  {/* {user?.fullName} */}
+                  </span>
                 <Button
                   variant="outline"
                   size="sm"
