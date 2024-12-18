@@ -1,12 +1,13 @@
 "use client";
-import React, { useState } from "react";
+import React, { ReactElement, ReactNode, useState } from "react";
 import { MapPin, Calendar, DollarSign, Globe } from "lucide-react";
 import { useLawyerStore } from "@/store/useLawyerStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
-import { Lawyer, OfficeLocation } from "@/types";
+import { Availability, Lawyer, OfficeLocation, TimeSlot } from "@/types";
 import MapboxAddressSearch from "@/components/lawyer/MapboxAddressSearch";
 import { LawyerMap } from "@/components/map/LawyerMap";
+import { LawyerCalendar } from "@/components/calendar/LawyerCalendar";
 
 const LawyerDashboard: React.FC = () => {
   const { isSubscribed, user } = useAuthStore();
@@ -16,12 +17,12 @@ const LawyerDashboard: React.FC = () => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+
   const [priceInput, setPriceInput] = useState<number | string>(
     lawyer?.startingPrice || 0
   );
-  const [servicesInput, setServicesInput] = useState<string[]>(
-    lawyer?.languages || []
-  );
+  const [servicesInput, setServicesInput] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState<{
     address: string;
     latitude: number;
@@ -36,9 +37,9 @@ const LawyerDashboard: React.FC = () => {
   };
 
   const handleServicesUpdate = async () => {
-    if (user?.id) {
-      await updateFirestoreField("languages", servicesInput, user.id);
-      await updateField("languages", servicesInput)
+    if (user?.id && servicesInput) {
+      await updateFirestoreField("languages", lawyer?.languages ? [...lawyer?.languages, servicesInput] : [servicesInput], user.id);
+      await updateField("languages", lawyer?.languages ? [...lawyer?.languages, servicesInput] : [servicesInput])
       setShowServicesModal(false);
     }
   };
@@ -59,7 +60,7 @@ const LawyerDashboard: React.FC = () => {
     }
   };
 
-  const Modal: React.FC<{ children: any; onClose: () => void }> = ({
+  const Modal: React.FC<{ children: ReactNode; onClose: () => void }> = ({
     children,
     onClose,
   }) => (
@@ -80,6 +81,58 @@ const LawyerDashboard: React.FC = () => {
 
   };
 
+  const dummyAvailability: Availability[] = [
+    {
+      id: "1",
+      date: "2024-12-18",
+      timeSlots: [
+        { id: "1a", startTime: "09:00", endTime: "10:00", isBooked: false },
+        { id: "1b", startTime: "10:00", endTime: "11:00", isBooked: true },
+        { id: "1c", startTime: "11:00", endTime: "12:00", isBooked: false },
+      ],
+    },
+    {
+      id: "2",
+      date: "2024-12-19",
+      timeSlots: [
+        { id: "2a", startTime: "13:00", endTime: "14:00", isBooked: false },
+        { id: "2b", startTime: "14:00", endTime: "15:00", isBooked: false },
+        { id: "2c", startTime: "15:00", endTime: "16:00", isBooked: true },
+      ],
+    },
+    {
+      id: "3",
+      date: "2024-12-20",
+      timeSlots: [
+        { id: "3a", startTime: "10:00", endTime: "11:00", isBooked: false },
+        { id: "3b", startTime: "11:00", endTime: "12:00", isBooked: true },
+      ],
+    },
+  ];
+  
+  
+  const onSlotSelect = (slot: TimeSlot, date: string) => {
+    const availability = dummyAvailability.find((a) => a.date === date);
+  
+    if (availability) {
+      const timeSlot = availability.timeSlots.find((s) => s.id === slot.id);
+  
+      if (timeSlot) {
+        if (!timeSlot.isBooked) {
+          // Mark the slot as booked (example update logic)
+          timeSlot.isBooked = true;
+          console.log(`Slot selected: ${timeSlot.startTime} - ${timeSlot.endTime} on ${date}`);
+        } else {
+          console.log(`Slot already booked: ${timeSlot.startTime} - ${timeSlot.endTime} on ${date}`);
+        }
+      } else {
+        console.error(`Time slot not found for ID: ${slot.id}`);
+      }
+    } else {
+      console.error(`Availability not found for date: ${date}`);
+    }
+  };
+  
   return (
     <>
       <div className="p-6">
@@ -108,9 +161,7 @@ const LawyerDashboard: React.FC = () => {
             icon={<Calendar className="h-6 w-6" />}
             title="Available Slots"
             value="View Calendar"
-            onClick={() => {
-              /* Handle calendar view */
-            }}
+            onClick={() => setShowCalendarModal(true)}
           />
         </div>
 
@@ -120,8 +171,8 @@ const LawyerDashboard: React.FC = () => {
             <div className="h-[400px] rounded-lg overflow-hidden">
               {lawyer && lawyer.officeLocations && (
                 <LawyerMap
-                locations={lawyer?.officeLocations}
-                onLocationSelect={onLocationSelect}
+                  locations={lawyer?.officeLocations}
+                  onLocationSelect={onLocationSelect}
                 />
               )}
             </div>
@@ -140,53 +191,68 @@ const LawyerDashboard: React.FC = () => {
         <SubscriptionModal isOpen={open} onClose={() => setOpen(!open)} />
       )}
 
+{showCalendarModal && <LawyerCalendar availability={dummyAvailability} onSlotSelect={onSlotSelect} onClose={() => setShowCalendarModal(false)}/>}
       {/* Price Modal */}
       {showPriceModal && (
-        <Modal onClose={() => setShowPriceModal(false)}>
-          <h2 className="text-xl font-semibold">Update Starting Price</h2>
-          <input
-            type="number"
-            value={priceInput}
-            onChange={(e) => setPriceInput(e.target.value)}
-            className="mt-2 p-2 border rounded"
-            placeholder="Enter new price"
-          />
-          <button
-            onClick={handlePriceUpdate}
-            className="mt-4 p-2 bg-blue-500 text-white rounded"
-          >
-            Save
-          </button>
-        </Modal>
+        <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-semibold">Update Starting Price</h2>
+            <input
+              type="number"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              className="mt-2 p-2 border rounded"
+              placeholder="Enter new price"
+            />
+            <button
+              onClick={handlePriceUpdate}
+              className="mt-4 p-2 bg-blue-500 text-white rounded"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setShowPriceModal(false)}
+              className="mt-4 p-2 bg-red-500 text-white rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Services Modal */}
       {showServicesModal && (
-        <Modal onClose={() => setShowServicesModal(false)}>
-          <h2 className="text-xl font-semibold">Update Languages</h2>
-          <input
-            type="text"
-            value={servicesInput.join(", ")}
-            onChange={(e) =>
-              setServicesInput(e.target.value.split(", ").map((s) => s.trim()))
-            }
-            className="mt-2 p-2 border rounded"
-            placeholder="Enter languages"
-          />
-          <button
-            onClick={handleServicesUpdate}
-            className="mt-4 p-2 bg-blue-500 text-white rounded"
-          >
-            Save
-          </button>
-        </Modal>
+        <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-semibold">Update Languages</h2>
+            <input
+              type="text"
+              value={servicesInput || "English"}
+              onChange={(e) => setServicesInput(e.target.value)}
+              className="mt-2 p-2 border rounded"
+              placeholder="Enter languages"
+            />
+            <button
+              onClick={handleServicesUpdate}
+              className="mt-4 p-2 bg-blue-500 text-white rounded"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setShowServicesModal(false)}
+              className="mt-4 p-2 bg-red-500 text-white rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Location Modal */}
       {showLocationModal && (
         <Modal onClose={() => setShowLocationModal(false)}>
           <h2 className="text-xl font-semibold">Add Office Location</h2>
-          <MapboxAddressSearch setLocationInput={setLocationInput}/>
+          <MapboxAddressSearch setLocationInput={setLocationInput} />
           <button
             onClick={handleLocationAdd}
             className="mt-4 p-2 bg-blue-500 text-white rounded"

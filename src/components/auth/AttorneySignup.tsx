@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { auth, db } from "@/firebase/config";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { ShowNotification } from "../Toaster";
 
 interface AttorneySignupProps {
   onSubmit: (data: any) => void;
@@ -185,6 +186,7 @@ const AttorneySignup: React.FC<AttorneySignupProps> = ({ onSubmit, setType }) =>
       }
       setLoader(false)
       setType("signin")
+      ShowNotification("Lawyer created successfully!", "success");
     } catch (error:any) {
       console.error("Error signing up:", error.message);
     }

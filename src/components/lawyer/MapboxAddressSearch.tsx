@@ -9,7 +9,7 @@ const MapboxAddressSearch: React.FC<MapboxAddressSearchProps> = ({setLocationInp
   const mapboxApiKey = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 if (!mapboxApiKey) {
-  throw new Error('Mapbox API key is missing. Please check your .env.local file.');
+  throw new Error('Mapbox API key is missing.');
 }
 const fetchSuggestions = async (searchText: string) => {
     if (!searchText) {
@@ -70,14 +70,14 @@ const fetchSuggestions = async (searchText: string) => {
         </ul>
       )}
 
-      {/* Selected Location */}
+      {/* Selected Location
       {selectedLocation && (
         <div className="mt-4">
           <h3>Selected Location:</h3>
           <p>Latitude: {selectedLocation.lat}</p>
           <p>Longitude: {selectedLocation.lng}</p>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

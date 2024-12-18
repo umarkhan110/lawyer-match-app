@@ -1,6 +1,6 @@
 export interface Lawyer {
-  id: string;
-  email: string;
+  id?: string;
+  email?: string;
   fullName: string;
   barNumber: string;
   address: string;
@@ -34,12 +34,12 @@ export interface TimeSlot {
 }
 
 export interface Client {
-  id: string;
-  email: string;
+  id?: string;
+  email?: string;
   phoneNumber?: string;
-  budget: number;
-  downPayment: number;
-  location: {
+  budget?: number;
+  downPayment?: number;
+  location?: {
     latitude: number;
     longitude: number;
   };

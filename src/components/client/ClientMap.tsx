@@ -11,7 +11,7 @@ interface ClientMapProps {
 const mapboxApiKey = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 if (!mapboxApiKey) {
-  throw new Error('Mapbox API key is missing. Please check your .env.local file.');
+  throw new Error('Mapbox API key is missing.');
 }
 export const ClientMap: React.FC<ClientMapProps> = ({
   client,
@@ -29,16 +29,13 @@ export const ClientMap: React.FC<ClientMapProps> = ({
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [client.location.longitude, client.location.latitude],
+      center: [client?.location?.longitude || 7.3, client?.location?.latitude || 3.1],
       zoom: 12
     });
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl());
-
-    // Add client marker
     new mapboxgl.Marker({ color: '#FF0000' })
-      .setLngLat([client.location.longitude, client.location.latitude])
+      .setLngLat([client?.location?.longitude || 7.3, client?.location?.latitude || 3.1])
       .setPopup(new mapboxgl.Popup().setHTML('<h3>Your Location</h3>'))
       .addTo(map.current);
 
@@ -50,12 +47,9 @@ export const ClientMap: React.FC<ClientMapProps> = ({
 
   useEffect(() => {
     if (!map.current) return;
-
-    // Remove existing markers
     markers.forEach(marker => marker.remove());
     const newMarkers: mapboxgl.Marker[] = [];
 
-    // Add lawyer markers with popups
     nearbyLawyers.forEach(lawyer => {
       lawyer.officeLocations.forEach(location => {
         const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
@@ -75,7 +69,7 @@ export const ClientMap: React.FC<ClientMapProps> = ({
         newMarkers.push(marker);
       });
     });
-
+// console.log(newMarkers)
     setMarkers(newMarkers);
   }, [nearbyLawyers]);
 

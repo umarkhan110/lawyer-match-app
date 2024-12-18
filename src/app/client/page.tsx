@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 const ClientDashboard: React.FC = () => {
   const { user } = useAuthStore();
-  const { client, nearbyLawyers, matchWithLawyer, updateBudget, updateDownPayment, updateFirestoreField } = useClientStore();
+  const { client, nearbyLawyers, matchWithLawyer, updateField, updateFirestoreField } = useClientStore();
   const [selectedLawyer, setSelectedLawyer] = useState<Lawyer | null>(null);
   const [budget, setBudget] = useState(client?.budget || 0);
   const [downPayment, setDownPayment] = useState(client?.downPayment || 0);
@@ -21,18 +21,18 @@ const ClientDashboard: React.FC = () => {
   };
   useEffect(() => {
     if(user?.id){
-      // updateBudget(budget);
+      updateField("budget", budget);
       updateFirestoreField("budget", budget, user.id);
     }
   }, [budget]);
 
   useEffect(() => {
     if(user?.id){
-      updateDownPayment(downPayment);
+      updateField("downPayment", downPayment);
       updateFirestoreField("downPayment", downPayment, user.id);
     }
   }, [downPayment]);
-
+// console.log(nearbyLawyers)
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">

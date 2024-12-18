@@ -1,67 +1,9 @@
 import { create } from 'zustand';
-import { Client, Lawyer } from '../types';
+import { Client, Lawyer, OfficeLocation, Availability } from '../types';
 import { sendClientNotification } from '../services/notifications';
 import { persist } from 'zustand/middleware';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, setDoc } from 'firebase/firestore';
 import { db } from "@/firebase/config";
-
-// Mock data for testing
-const mockClient: Client = {
-  id: '1',
-  email: 'client@example.com',
-  phoneNumber: '+1234567890',
-  budget: 50000,
-  downPayment: 5000,
-  location: {
-    latitude: 40.7128,
-    longitude: -74.0060 // New York coordinates
-  }
-};
-
-const mockNearbyLawyers: Lawyer[] = [
-  {
-    id: '1',
-    email: 'lawyer1@example.com',
-    fullName: 'John Smith',
-    barNumber: '123456',
-    address: '123 Law St, NY',
-    phoneNumber: '+1234567890',
-    languages: ['English', 'Spanish'],
-    startingPrice: 5000,
-    additionalServices: ['Document Review', 'Court Representation'],
-    officeLocations: [
-      {
-        id: '1',
-        address: '123 Law St, New York, NY',
-        latitude: 40.7145,
-        longitude: -74.0071
-      }
-    ],
-    availability: [],
-    profileImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&h=100'
-  },
-  {
-    id: '2',
-    email: 'lawyer2@example.com',
-    fullName: 'Jane Doe',
-    barNumber: '789012',
-    address: '456 Legal Ave, NY',
-    phoneNumber: '+1987654321',
-    languages: ['English', 'Mandarin'],
-    startingPrice: 6000,
-    additionalServices: ['Immigration Consultation', 'Visa Applications'],
-    officeLocations: [
-      {
-        id: '2',
-        address: '456 Legal Ave, New York, NY',
-        latitude: 40.7112,
-        longitude: -74.0055
-      }
-    ],
-    availability: [],
-    profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&h=100'
-  }
-];
 
 interface ClientStore {
   client: Client | null;
@@ -69,12 +11,11 @@ interface ClientStore {
   matches: { [key: string]: Lawyer };
   isLoading: boolean;
   error: string | null;
-  updateBudget: (budget: number) => void;
-  updateDownPayment: (downPayment: number) => void;
-  updateLocation: (latitude: number, longitude: number) => void;
   matchWithLawyer: (lawyerId: string) => Promise<void>;
   removeMatch: (lawyerId: string) => void;
+  updateField: <T extends keyof Client>(field: T, value: Client[T]) => Promise<void>;
   updateFirestoreField: (field: keyof Client, value: any, userId: string) => Promise<void>;
+  fetchNearbyLawyers: () => Promise<void>;  // New method to fetch nearby lawyers
 }
 
 export const useClientStore = create<ClientStore>()(
@@ -85,27 +26,62 @@ export const useClientStore = create<ClientStore>()(
     isLoading: false,
     error: null,
 
-    updateBudget: (budget) => {
-      set((state) => {
-        console.log(budget)
-        return{
-        client: state.client ? { ...state.client, budget } : null
-      }});
+    // New method to fetch lawyers
+    fetchNearbyLawyers: async () => {
+      set({ isLoading: true });
+      try {
+        const q = query(collection(db, "users"), where("isAttorney", "==", true));
+        const querySnapshot = await getDocs(q);
+        const lawyers: Lawyer[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const officeLocations: OfficeLocation[] = data.officeLocations || [];
+          const availability: Availability[] = data.availability || [];
+
+          lawyers.push({
+            id: doc.id,
+            email: data.email,
+            fullName: data.fullName,
+            barNumber: data.barNumber,
+            address: data.address,
+            phoneNumber: data.phoneNumber,
+            languages: data.languages || [],
+            startingPrice: data.startingPrice || 0,
+            additionalServices: data.additionalServices || [],
+            officeLocations,
+            availability,
+            profileImage: data.profileImage || '',
+          });
+        });
+        // console.log(lawyers)
+
+        set({ nearbyLawyers: lawyers });
+      } catch (error) {
+        console.error("Error fetching nearby lawyers:", error);
+        set({ error: 'Failed to fetch nearby lawyers' });
+      } finally {
+        set({ isLoading: false });
+      }
     },
 
-    updateDownPayment: (downPayment) => {
-      set((state) => {
-        return{
-        client: state.client ? { ...state.client, downPayment } : null
-      }});
-    },
-
-    updateLocation: (latitude, longitude) => {
-      set((state) => ({
-        client: state.client
-          ? { ...state.client, location: { latitude, longitude } }
-          : null
-      }));
+    updateField: async (field, value) => {
+      set({ isLoading: true });
+      try {
+        // console.log("first");
+        set((state) => {
+          const updatedClient = { ...state.client, [field]: value };
+          // console.log('Updated client:', updatedClient);
+          return {
+            client: updatedClient,
+            error: null,
+          };
+        });
+      } catch (error) {
+        console.error(`Failed to update field "${field}":`, error);
+        set({ error: `Failed to update ${field}` });
+      } finally {
+        set({ isLoading: false });
+      }
     },
 
     matchWithLawyer: async (lawyerId) => {
@@ -114,12 +90,13 @@ export const useClientStore = create<ClientStore>()(
 
       set({ isLoading: true });
       try {
-        await sendClientNotification(get().client!, lawyer);
+        console.log(lawyer)
+        // await sendClientNotification(get().client!, lawyer);
         set((state) => ({
           matches: { ...state.matches, [lawyerId]: lawyer }
         }));
       } catch (error) {
-        console.log(error)
+        console.log(error);
         set({ error: 'Failed to match with lawyer' });
       } finally {
         set({ isLoading: false });
@@ -138,11 +115,6 @@ export const useClientStore = create<ClientStore>()(
       try {
         const userDocRef = doc(db, "users", userId);
         await setDoc(userDocRef, { [field]: value }, { merge: true });
-        // set((state) => {
-        //   return {
-        //   client: { ...state.client, [field]: value },
-        //   error: null,
-        // }});
       } catch (error) {
         console.error(`Failed to update Firestore field "${field}":`, error);
         set({ error: `Failed to update ${field}` });
@@ -155,7 +127,8 @@ export const useClientStore = create<ClientStore>()(
     name: "client-store",
     partialize: (state) => ({
       client: state.client,
+      nearbyLawyers: state.nearbyLawyers,
+      matches: state.matches
     }),
   }
-  )
-  );
+));

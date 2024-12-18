@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { auth, db } from "@/firebase/config";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import MapboxAddressSearch from "../lawyer/MapboxAddressSearch";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ShowNotification } from "../Toaster";
+
 
 interface FamilyMember {
   fullName: string;
@@ -20,6 +23,8 @@ interface FormData {
   FullName: string;
   FileNumber: string;
   Address: string;
+  latitude: number | null,
+  longitude: number | null,
   Dob: string;
   Nationality: string;
   CountryOfResidence: string;
@@ -58,6 +63,8 @@ export const ClientSignUp: React.FC<ClientSignUpProps> = ({ onClose, setType }) 
     FullName: "",
     FileNumber: "",
     Address: "",
+    latitude: null,
+    longitude: null,
     Dob: "",
     Nationality: "",
     CountryOfResidence: "",
@@ -69,11 +76,7 @@ export const ClientSignUp: React.FC<ClientSignUpProps> = ({ onClose, setType }) 
     asylumType: "",
   });
 
-    const [locationInput, setLocationInput] = useState<{
-      address: string;
-      latitude: number;
-      longitude: number;
-    } | null>(null);
+
 
   const handleNext = () => setStep((prev) => prev + 1);
   const handleBack = () => setStep((prev) => prev - 1);
@@ -107,7 +110,7 @@ export const ClientSignUp: React.FC<ClientSignUpProps> = ({ onClose, setType }) 
           handleBack={handleBack}
           familyMembers={familyMembers}
           setFamilyMembers={setFamilyMembers}
-          setLocationInput={setLocationInput}
+          // setLocationInput={setLocationInput}
         />
       )}
       {step === 3 && (
@@ -211,10 +214,15 @@ const Step2: React.FC<StepProps> = ({
   handleBack,
   familyMembers,
   setFamilyMembers,
-  setLocationInput
+  // setLocationInput
 }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [familyMemberErrors, setFamilyMemberErrors] = useState<string[]>([]);
+  const [locationInput, setLocationInput] = useState<{
+    address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -262,10 +270,10 @@ const Step2: React.FC<StepProps> = ({
       isUnder18: false,
     };
 
-    // setFamilyMembers((prev) => {
-    //   const updated = [...prev, newMember];
-    //   return updated;
-    // });
+    setFamilyMembers?.((prev) => {
+      const updated = [...prev, newMember];
+      return updated;
+    });
   };
 
   const handleFamilyMemberChange = (
@@ -276,16 +284,22 @@ const Step2: React.FC<StepProps> = ({
     const updatedMembers = [...familyMembers];
     updatedMembers[index] = { ...updatedMembers[index], [field]: value };
 
-    // setFamilyMembers(updatedMembers);
+    setFamilyMembers?.(updatedMembers);
   };
 
   const removeFamilyMember = (index: number) => {
-    // setFamilyMembers((prev) => prev.filter((_, i) => i !== index));
+    setFamilyMembers?.((prev) => prev.filter((_, i) => i !== index));
   };
 
+  useEffect(()=>{
+    if(locationInput?.latitude) formData.latitude = locationInput?.latitude;
+    if(locationInput?.longitude) formData.longitude = locationInput?.longitude;
+    if(locationInput?.address) formData.Address = locationInput?.address;
+
+  }, [locationInput])
   return (
     <div className="space-y-4">
-      {(["FullName", "FileNumber", "Address", "Dob", "Nationality", "CountryOfResidence"] as Array<keyof FormData>).map(
+      {(["FullName", "FileNumber", "Dob", "Nationality", "CountryOfResidence"] as Array<keyof FormData>).map(
         (field) => (
           <div key={field}>
             <input
@@ -300,7 +314,7 @@ const Step2: React.FC<StepProps> = ({
           </div>
         )
       )}
-          {/* <MapboxAddressSearch setLocationInput={setLocationInput}/> */}
+          <MapboxAddressSearch setLocationInput={setLocationInput}/>
 
       <div>
         <h3 className="text-lg font-semibold">Family Members</h3>
@@ -399,9 +413,9 @@ const Step3: React.FC<StepProps> = ({ formData, setFormData, handleNext, handleB
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.i862) newErrors.i862 = "The Notice to Appear (I-862) is required.";
-    if (!formData.i94) newErrors.i94 = "The Arrival/Departure Record (I-94) is required.";
-    if (!formData.additionalDocs) newErrors.additionalDocs = "Additional documents are required.";
+    // if (!formData.i862) newErrors.i862 = "The Notice to Appear (I-862) is required.";
+    // if (!formData.i94) newErrors.i94 = "The Arrival/Departure Record (I-94) is required.";
+    // if (!formData.additionalDocs) newErrors.additionalDocs = "Additional documents are required.";
 
     // setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -422,10 +436,10 @@ const Step3: React.FC<StepProps> = ({ formData, setFormData, handleNext, handleB
         return;
       }
       setErrors((prev) => ({ ...prev, [name]: "" }));
-      // setFormData((prev) => ({
-      //   ...prev,
-      //   [name]: file,
-      // }));
+      setFormData?.((prev) => ({
+        ...prev,
+        [name]: file,
+      }));
     }
   };
 
@@ -561,30 +575,51 @@ const Step5: React.FC<StepProps> = ({ formData, handleBack, onClose, setType }) 
     }
   };
 
+
+  const storage = getStorage();
   const handleSubmit = async () => {
     try {
       if (validate()) {
-        console.log(formData)
-        // onSubmit(formData);
-        // setLoader(true)
+        console.log("Submitting form:", formData);
+
         const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         await updateProfile(userCredential.user, { displayName: formData.FullName });
+  
+        const userId = userCredential.user.uid;
+        const uploadFile = async (file: File | null, path: string) => {
+          if (!file) return null;
+  
+          const fileRef = ref(storage, path);
+          await uploadBytes(fileRef, file);
+          return getDownloadURL(fileRef);
+        };
 
-        const userDocRef = doc(db, "users", userCredential.user.uid);
+        const selfieUrl = await uploadFile(formData.selfie, `users/${userId}/selfie`);
+        const i862Url = await uploadFile(formData.i862, `users/${userId}/i862`);
+        const i94Url = await uploadFile(formData.i94, `users/${userId}/i94`);
+        const additionalDocsUrl = await uploadFile(formData.additionalDocs, `users/${userId}/additionalDocs`);
+
+        const userDocRef = doc(db, "users", userId);
         await setDoc(userDocRef, {
-          uid: userCredential.user.uid,
+          uid: userId,
           isAttorney: false,
           createdAt: new Date(),
-          ...formData
+          ...formData,
+          selfie: selfieUrl,
+          i862: i862Url,
+          i94: i94Url,
+          additionalDocs: additionalDocsUrl,
         });
+  
+        console.log("User created and data stored successfully!");
+        ShowNotification("Client created successfully!", "success");
+        onClose?.();
       }
-      // setLoader(false)
-      // setType("signin")
-    } catch (error:any) {
+    } catch (error: any) {
       console.error("Error signing up:", error.message);
     }
-    // setLoader(false)
   };
+  
 
   return (
     <div className="space-y-4">

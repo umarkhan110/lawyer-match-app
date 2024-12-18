@@ -72,9 +72,15 @@ export const useAuthStore = create<AuthState>()(
                 }
               };
               const updateClientStore = useClientStore.getState();
-              updateClientStore.updateLocation(userDoc.data().latitude, userDoc.data().longitude);
-              updateClientStore.updateBudget(user.budget || 0);
-              updateClientStore.updateDownPayment(user.downPayment || 0);
+              // console.log("Before updating client store:", updateClientStore.client);
+          
+              updateClientStore.updateField("location", {"latitude":user.location?.latitude || 0, "longitude":user.location?.longitude || 0});
+              updateClientStore.updateField("budget", user.budget || 0);
+              updateClientStore.updateField("downPayment", user.downPayment || 0);
+              updateClientStore.fetchNearbyLawyers();
+
+          
+              // console.log("After updating client store:", updateClientStore.client);
               set({ user, isAuthenticated: true, isLoading: false });
               setCookie('auth-storage', JSON.stringify({ isAuthenticated: true, role: role }));
             }

@@ -7,6 +7,7 @@ import AttorneySignup from './AttorneySignup';
 import { useRouter } from 'next/navigation';
 import { auth } from "@/firebase/config";
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { ShowNotification } from '../Toaster';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -37,9 +38,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       if (type === 'signin') {
         const res = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-        console.log(res)
+        // console.log(res)
         if (res) {
           await login(res, isAttorney);
+          ShowNotification("Login successfully!", "success");
           router.push(isAttorney ? "/lawyer" : "/client")
         }
         // onClose();
